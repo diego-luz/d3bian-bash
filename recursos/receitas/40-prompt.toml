@@ -1,0 +1,83 @@
+[modulo]
+id = "40"
+nome = "prompt"
+titulo = "Tema do Oh My Posh no bash"
+requer = ["30"]
+afetada_por = ["tema_posh"]
+
+# alguns temas, como o montys, separam as pastas com \, herdado do Windows;
+# no Linux fica ~\Projetos\app. A barra normal vale para todos os temas
+[[passo]]
+tipo = "script"
+dizer = "trocando o separador de pastas \\ por / nos temas"
+tolera_falha = true
+corpo = '''
+sed -i 's|"folder_separator_icon": "\\\\"|"folder_separator_icon": "/"|' "$HOME"/.poshthemes/*.omp.json
+echo "$(grep -l '"folder_separator_icon": "/"' "$HOME"/.poshthemes/*.omp.json | wc -l) temas com /"
+'''
+
+# Versoes sem git de alguns temas: o mesmo visual, sem o trecho que mostra o
+# ramo (o "main") e as mudancas. Saem dos temas baixados, depois da troca do
+# separador; ficam em ~/.poshthemes como <tema>-sem-git.omp.json. Um nome
+# digitado a mao que termine em -sem-git tambem vale
+[[passo]]
+tipo = "script"
+dizer = "montando as versoes sem git dos temas"
+tolera_falha = true
+corpo = '''
+python3 - "$HOME/.poshthemes" "@@arquivos@@/../opcoes.toml" "$CTX_TEMA_POSH" "$CTX_ESTADO_DIR/arquivos-criados" <<'PY'
+import json, sys, tomllib
+from pathlib import Path
+pasta, opcoes, escolhido, criados = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], Path(sys.argv[4])
+valores = next(o for o in tomllib.loads(opcoes.read_text())["opcao"] if o["chave"] == "tema_posh")["valores"]
+nomes = {v.removesuffix("-sem-git") for v in valores + [escolhido] if v.endswith("-sem-git")}
+feitos = 0
+for nome in sorted(nomes):
+    base, alvo = pasta / f"{nome}.omp.json", pasta / f"{nome}-sem-git.omp.json"
+    if not base.is_file():
+        print(f"atencao: sem o tema {nome}; a versao sem git fica de fora")
+        continue
+    tema = json.loads(base.read_text())
+    blocos = []
+    for bloco in tema.get("blocks", []):
+        bloco["segments"] = [s for s in bloco.get("segments", []) if s.get("type") != "git"]
+        if bloco["segments"]:
+            blocos.append(bloco)
+    tema["blocks"] = blocos
+    tema["tooltips"] = [t for t in tema.get("tooltips", []) if t.get("type") != "git"]
+    if not tema["tooltips"]:
+        tema.pop("tooltips")
+    if not alvo.exists():
+        # pasta que ja era da pessoa: o arquivo novo entra na lista do desfazer
+        criados.parent.mkdir(parents=True, exist_ok=True)
+        with criados.open("a") as f:
+            f.write(f"{alvo}\n")
+    alvo.write_text(json.dumps(tema, indent=2, ensure_ascii=False) + "\n")
+    feitos += 1
+print(f"{feitos} temas sem git em {pasta}")
+PY
+'''
+
+[[passo]]
+tipo = "script"
+dizer = "conferindo o tema @@tema_posh@@"
+tolera_falha = true
+corpo = '''
+if [ -r "$HOME/.poshthemes/$CTX_TEMA_POSH.omp.json" ]; then
+  echo "tema encontrado"
+else
+  echo "nao achei ~/.poshthemes/$CTX_TEMA_POSH.omp.json; o prompt fica o padrao ate o nome bater"
+fi
+'''
+
+[[passo]]
+tipo = "arquivo"
+destino = "@@bash_confd@@/@@NOME@@-40-prompt.bash"
+conteudo = '''
+# gerado pelo @@NOME@@; mude pela pagina de Ajustes, nao aqui
+__d3_tema="$HOME/.poshthemes/@@tema_posh@@.omp.json"
+if command -v oh-my-posh >/dev/null && [[ -r $__d3_tema ]]; then
+  eval "$(oh-my-posh init bash --config "$__d3_tema")"
+fi
+unset __d3_tema
+'''

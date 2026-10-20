@@ -1,0 +1,214 @@
+<title>Galeria - @@NOME@@</title>
+<meta name="projeto" content="@@NOME@@" data-versao="@@VERSAO@@">
+<link rel="stylesheet" href="estilo.css">
+<script src="comum.js"></script>
+
+<div class="estado"></div>
+
+<a class="voltar" href="/"><span aria-hidden="true">&larr;</span> Voltar ao início</a>
+<h1>Galeria</h1>
+<p class="caminho">/galeria</p>
+<p class="sub">Capturas de um terminal de verdade, com a saída real do Oh My Posh e do fastfetch.
+  Clique numa miniatura para marcar; a captura grande mostra o que está marcado.</p>
+
+<nav class="abas" id="abas" aria-label="Seções da galeria"></nav>
+
+<!-- uma secao por opcao com imagens; as imagens vem do campo exemplos do opcoes.toml
+     e sao geradas por ferramentas/gerar_exemplos.py -->
+<div id="secoes"><p class="sub">Carregando…</p></div>
+
+<div class="barra-acao">
+  <span class="conta" id="conta">Nada alterado</span>
+  <button class="bt pri" id="btAplicar">Aplicar</button>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const criar = (tag, classe, texto) => {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+};
+
+const SECOES = [
+  {chave: "tema_posh", titulo: "Prompt", ajuda: "O tema do Oh My Posh no bash."},
+  {chave: "fastfetch", titulo: "Fastfetch", ajuda: "O resumo do sistema que aparece ao abrir o terminal."},
+  {chave: "cores", titulo: "Cores", ajuda: "O esquema de cores do xfce4-terminal e do GNOME Terminal."},
+];
+// valores que nao tem captura porque nao desenham nada
+const SEM_FOTO = {nenhum: "Sem fastfetch", manter: "Cores atuais"};
+
+let estado = {}, salvo = {}, opcoes = {}, receitas = [], instalado = true, retomou = false;
+// preenchido pela verificacao "Fastfetch no repositorio" quando o apt nao tem o pacote
+let avisoFastfetch = "";
+const rotulo = (o, v) => (o.nomes || {})[v] || v;
+const mudadas = () => SECOES.map(s => s.chave).filter(c => opcoes[c] && estado[c] !== salvo[c]);
+
+// ---- desenho ------------------------------------------------------------
+
+function secao(s){
+  const o = opcoes[s.chave];
+  const atual = estado[s.chave];
+  const caixa = criar("section", "cartao galeria");
+  caixa.id = "sec-" + s.chave;
+  caixa.append(criar("h2", "", s.titulo), criar("p", "dica-sec", s.ajuda));
+  if (s.chave === "fastfetch" && avisoFastfetch){
+    const aviso = criar("div", "aviso alerta");
+    aviso.append(criar("b", "", "Pode não funcionar nesta versão"), document.createTextNode(
+      `O fastfetch ${avisoFastfetch} Dá para escolher mesmo assim: o resto do terminal fica normal.`));
+    caixa.appendChild(aviso);
+  }
+
+  const grande = criar("figure", "grande");
+  const arquivo = (o.exemplos || {})[atual];
+  if (arquivo){
+    const img = criar("img");
+    img.src = "/exemplos/" + arquivo;
+    img.alt = `${s.titulo}: ${rotulo(o, atual)}`;
+    grande.appendChild(img);
+  } else {
+    grande.appendChild(criar("div", "semfoto", SEM_FOTO[atual]
+      || `“${atual}” não tem captura aqui; vale se existir em ~/.poshthemes.`));
+  }
+  const legenda = criar("figcaption", "legenda");
+  legenda.append(criar("span", "", "Marcado: " + rotulo(o, atual)),
+                 criar("span", "", atual === salvo[s.chave] ? "é o que está valendo" : "ainda não aplicado"));
+  grande.appendChild(legenda);
+  caixa.appendChild(grande);
+
+  const grade = criar("div", "miniaturas");
+  o.valores.forEach(v => {
+    const b = criar("button", "miniatura");
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(v === atual));
+    const f = (o.exemplos || {})[v];
+    if (f){
+      const img = criar("img");
+      img.loading = "lazy"; img.alt = ""; img.src = "/exemplos/" + f;
+      b.appendChild(img);
+    } else {
+      b.appendChild(criar("span", "vazio", SEM_FOTO[v] || "sem captura"));
+    }
+    b.appendChild(criar("span", "nome", rotulo(o, v)));
+    b.addEventListener("click", () => {
+      estado[s.chave] = v;
+      // so a secao muda; redesenhar a pagina inteira faria as imagens piscarem
+      $("#sec-" + s.chave).replaceWith(secao(s));
+      $("#sec-" + s.chave + " .grande").scrollIntoView({block: "nearest", behavior: "smooth"});
+      desenharConta();
+    });
+    grade.appendChild(b);
+  });
+  caixa.appendChild(grade);
+  return caixa;
+}
+
+function desenhar(){
+  const caixa = $("#secoes"), abas = $("#abas");
+  caixa.textContent = ""; abas.textContent = "";
+  SECOES.filter(s => opcoes[s.chave]).forEach(s => {
+    const a = criar("a", "", s.titulo);
+    a.href = "#sec-" + s.chave;
+    abas.appendChild(a);
+    caixa.appendChild(secao(s));
+  });
+  desenharConta();
+}
+
+function desenharConta(){
+  const n = mudadas().length;
+  const conta = $("#conta");
+  conta.textContent = n === 0 ? "Nada alterado"
+    : n === 1 ? "1 escolha ainda não aplicada" : `${n} escolhas ainda não aplicadas`;
+  conta.classList.toggle("mudou", n > 0);
+  if (!Terminal.ocupado()) $("#btAplicar").disabled = instalado && n === 0;
+}
+
+// ---- carga ----------------------------------------------------------------
+
+const etapasDe = ids => ids.map(id => {
+  const r = receitas.find(x => x.id === id);
+  return {id, nome: r ? (r.titulo || r.nome) : "Etapa " + id};
+});
+function fimAplicar(codigo){
+  if (codigo === 0) return {bom: true, titulo: "Visual aplicado",
+    texto: "Abra um terminal novo para ver. As cores do xfce4-terminal já mudam nas janelas abertas."};
+  if (codigo !== null) return {bom: false, titulo: "A aplicação parou com erro",
+    texto: `Código ${codigo}. A etapa em vermelho e as linhas vermelhas do log mostram onde parou.`};
+  return null;
+}
+
+async function carregar(){
+  let d;
+  try { d = await fetch("/api/estado").then(r => r.json()); }
+  catch (e) {
+    $("#secoes").textContent = "";
+    $("#secoes").appendChild(criar("p", "sub", "Não consegui falar com o servidor local."));
+    return;
+  }
+  estado = d.config || {};
+  salvo = {...estado};
+  opcoes = Object.fromEntries((d.opcoes || []).map(o => [o.chave, o]));
+  receitas = d.receitas || [];
+  instalado = d.instalado !== false;
+  // antes da primeira instalacao nada roda daqui: as escolhas seguem para Ajustes
+  $("#btAplicar").textContent = instalado ? "Aplicar" : "Levar para Ajustes";
+  desenhar();
+  avisarFastfetch().then(mudou => { if (mudou && opcoes.fastfetch) $("#sec-fastfetch").replaceWith(secao(SECOES[1])); });
+
+  if (!retomou){
+    retomou = true;
+    Terminal.retomar({
+      titulo: () => "Aplicando os ajustes",
+      etapas: rotulo => { const m = (rotulo || "").match(/aplicando: (.*)$/i); return m ? etapasDe(m[1].split(", ")) : []; },
+      aoTerminar: async codigo => { await carregar(); return fimAplicar(codigo); },
+    });
+  }
+}
+// a verificacao consulta o apt; vem depois do desenho para nao atrasar a pagina
+async function avisarFastfetch(){
+  try {
+    const d = await fetch("/api/verificacoes").then(r => r.json());
+    const c = (d.verificacoes || []).find(x => x.nome === "Fastfetch no repositorio");
+    // a frase da verificacao termina em "; a opcao fica sem efeito", que o aviso da galeria ja diz
+    const novo = c && !c.ok ? c.detalhe.replace(/;.*$/, ".") : "";
+    const mudou = novo !== avisoFastfetch;
+    avisoFastfetch = novo;
+    return mudou;
+  } catch (e) { return false; }
+}
+
+carregar();
+
+Terminal.aoMudar(ocupado => {
+  if (ocupado) $("#btAplicar").disabled = true; else desenharConta();
+});
+
+$("#btAplicar").addEventListener("click", async () => {
+  if (!instalado){
+    const q = new URLSearchParams();
+    mudadas().forEach(c => q.set(c, estado[c]));
+    location.href = "ajustes.html" + (q.toString() ? "?" + q : "");
+    return;
+  }
+  $("#btAplicar").disabled = true;
+  let r;
+  try {
+    r = await fetch("/api/aplicar", {method: "POST", headers: {"Content-Type": "application/json"},
+                                     body: JSON.stringify(estado)}).then(x => x.json());
+  } catch (e) { r = {iniciado: false, erro: "O servidor local não respondeu."}; }
+  if (!r.iniciado){
+    desenharConta();
+    if (r.motivo === "nada a fazer"){ await carregar(); return; }
+    Terminal.avisar(false, "Não deu para começar", r.erro || (r.motivo === "ocupado"
+      ? "Já tem uma tarefa rodando. Espere terminar." : "Não havia nada a fazer com essas escolhas."));
+    return;
+  }
+  Terminal.acompanhar({
+    titulo: "Aplicando o visual",
+    etapas: etapasDe(r.receitas || []),
+    aoTerminar: async codigo => { await carregar(); return fimAplicar(codigo); },
+  });
+});
+</script>

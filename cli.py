@@ -1,0 +1,252 @@
+"""Linha de comando.
+
+Sem argumento nenhum ele faz o que a maioria quer: pede a senha uma vez e abre
+o painel no navegador. Os subcomandos existem para quem prefere terminal, e
+para automatizar.
+"""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+import threading
+import time
+
+from . import (DESCRICAO, NOME, VERSAO, caminhos, config, estado, projeto, receitas,
+               servidor, sistema)
+
+
+# --------------------------------------------------------------------------
+# credencial de administrador
+# --------------------------------------------------------------------------
+
+def garantir_sudo(obrigatorio: bool = False) -> bool:
+    """Pede a senha uma vez e mantem viva enquanto o programa roda.
+
+    A senha e digitada no terminal, nunca na pagina. O painel so reaproveita a
+    credencial que foi autorizada aqui.
+    """
+    if sistema.sudo_liberado():
+        # ja autorizado (cache do sudo): mantem vivo do mesmo jeito, senao
+        # ele vence no meio da sessao do painel
+        _manter_sudo()
+        return True
+    if not sys.stdin.isatty():
+        if obrigatorio:
+            print("  preciso de permissao de administrador e nao ha terminal para perguntar")
+        return False
+    print("  Algumas etapas mexem em pacotes e em /etc.")
+    print("  Autorize o administrador uma vez, aqui no terminal.\n")
+    try:
+        if subprocess.run(["sudo", "-v"]).returncode != 0:
+            return False
+    except OSError:
+        return False
+
+    _manter_sudo()
+    return True
+
+
+_mantendo = threading.Event()
+
+
+def _manter_sudo() -> None:
+    """Renova a credencial a cada 50 s enquanto o programa roda (uma vez so)."""
+    if _mantendo.is_set():
+        return
+    _mantendo.set()
+
+    def manter() -> None:
+        while True:
+            time.sleep(50)
+            subprocess.run(["sudo", "-n", "true"], capture_output=True)
+
+    threading.Thread(target=manter, daemon=True).start()
+
+
+# --------------------------------------------------------------------------
+# subcomandos
+# --------------------------------------------------------------------------
+
+def cmd_web(args) -> int:
+    garantir_sudo()
+    return servidor.subir(porta=args.porta, abrir=not args.sem_navegador)
+
+
+def cmd_listar(_args) -> int:
+    lista = receitas.carregar()
+    print(f"  {'id':<5}{'etapa':<22}{'situacao'}")
+    for r in lista:
+        situacao = f"aplicada {estado.quando(r.ident)}" if r.aplicada else "pendente"
+        print(f"  {r.ident:<5}{r.nome:<22}{situacao}{'  (nucleo)' if r.nucleo else ''}")
+        if r.titulo:
+            print(f"  {'':<5}{r.titulo}")
+    print(f"\n  preparado: {'sim' if receitas.instalado(lista) else 'nao'}")
+    return 0
+
+
+def avisar_sessao() -> None:
+    """A troca de shell so vale na sessao seguinte; o log sozinho passa despercebido."""
+    novo, antigo = projeto.shell_pendente()
+    if not novo:
+        return
+    nome = novo.rsplit("/", 1)[-1]
+    print(f"\n  atencao: falta encerrar a sessao. O login ja usa {nome}, mas esta sessao")
+    print(f"  comecou com {antigo.rsplit('/', 1)[-1]}, e todo terminal aberto nela herda esse shell.")
+    for i, passo in enumerate(projeto.PASSOS_SESSAO, 1):
+        print(f"    {i}. {passo.format(shell=nome)}")
+
+
+def cmd_aplicar(args) -> int:
+    if not args.simular:
+        garantir_sudo()
+    falhas = receitas.executar(
+        apenas=args.apenas.split(",") if args.apenas else None,
+        pular=args.pular.split(",") if args.pular else None,
+        refazer=args.refazer or bool(args.apenas),
+        simular=args.simular,
+    )
+    if not args.simular:
+        avisar_sessao()
+    if falhas:
+        print(f"\n  {falhas} etapa(s) com problema. Detalhes em {caminhos.REGISTRO}")
+        return 1
+    print("\n  tudo aplicado")
+    return 0
+
+
+def cmd_instalar(args) -> int:
+    impedem = sistema.impedimentos()
+    if impedem and not args.mesmo_assim:
+        print("  verificacoes que impedem a instalacao: " + ", ".join(impedem))
+        print("  use --mesmo-assim para tentar do jeito que esta")
+        return 1
+    garantir_sudo(obrigatorio=True)
+    falhas = receitas.executar()
+    avisar_sessao()
+    print("\n  " + ("instalado" if not falhas else f"{falhas} etapa(s) com problema"))
+    return 1 if falhas else 0
+
+
+def cmd_config(args) -> int:
+    if not args.pares:
+        atual = config.ler()
+        for opcao in config.OPCOES:
+            valores = "|".join(opcao.valores)
+            if opcao.livre:
+                valores = f"{valores} ou texto livre" if valores else "texto livre"
+            print(f"  {opcao.chave:<18}{atual[opcao.chave]:<12}({valores})")
+            print(f"  {'':<18}{opcao.titulo}")
+        return 0
+    novos = {}
+    for par in args.pares:
+        chave, _, valor = par.partition("=")
+        novos[chave.strip()] = valor.strip()
+    validos = config.filtrar(novos)
+    recusados = sorted(set(novos) - set(validos))
+    if recusados:
+        print("  recusados: " + ", ".join(recusados))
+    mudou = config.gravar(validos)
+    print("  alterado: " + (", ".join(mudou) if mudou else "nada"))
+    if mudou and not args.so_gravar:
+        alvos = receitas.afetadas_por(mudou)
+        if alvos:
+            garantir_sudo()
+            receitas.executar(apenas=alvos, refazer=True)
+    return 0
+
+
+def cmd_verificar(_args) -> int:
+    lista = sistema.verificacoes()
+    for c in lista:
+        marca = "ok " if c["ok"] else ("!! " if c["critico"] else " ~ ")
+        print(f"  {marca} {c['nome']:<28}{c['detalhe']}")
+    impedem = sistema.impedimentos(lista)
+    print("\n  " + ("pronto para instalar" if not impedem
+                    else "impedimentos: " + ", ".join(impedem)))
+    return 1 if impedem else 0
+
+
+def cmd_restaurar(args) -> int:
+    from . import desfazer
+    if args.apagar:
+        previa = desfazer.previa_remocao()
+        print("  com --apagar, tambem sera apagado:")
+        if previa["pacotes"]:
+            print(f"    pacotes desinstalados com apt: {', '.join(previa['pacotes'])}")
+        for item in previa["arquivos"] + previa["pastas_do_projeto"]:
+            print(f"    {item}")
+        for item in previa["ficam"]:
+            print(f"    fica: {item['nome']} ({item['motivo']})")
+    if not args.sim:
+        print("  isto volta o terminal ao que era antes: shell do login, fonte, cores,")
+        print("  prompt, saudacao, fastfetch e margem." + ("" if args.apagar else
+              " ble.sh, oh-my-posh, temas e fontes continuam instalados (--apagar remove)."))
+        print(f"  confirme com: {NOME} restaurar --sim" + (" --apagar" if args.apagar else ""))
+        return 1
+    # o restaurar comum copiaria de volta arquivos do proprio projeto; aqui cada
+    # coisa e desfeita do jeito dela (ver desfazer.py)
+    garantir_sudo()
+    falhas = desfazer.executar(lambda texto: print(texto), apagar=args.apagar)
+    print("\n  pronto; feche todas as janelas do terminal e abra de novo" if not falhas
+          else f"\n  {falhas} etapa(s) com erro; veja as linhas acima")
+    return 1 if falhas else 0
+
+
+# --------------------------------------------------------------------------
+
+def construir() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog=NOME, description=DESCRICAO)
+    p.add_argument("--versao", action="version", version=f"{NOME} {VERSAO}")
+    sub = p.add_subparsers(dest="comando")
+
+    w = sub.add_parser("web", help="abre o painel no navegador (padrao)")
+    w.add_argument("--porta", type=int, default=servidor.PORTA)
+    w.add_argument("--sem-navegador", action="store_true")
+    w.set_defaults(func=cmd_web)
+
+    l = sub.add_parser("listar", help="mostra as etapas e o que ja foi aplicado")
+    l.set_defaults(func=cmd_listar)
+
+    a = sub.add_parser("aplicar", help="roda etapas")
+    a.add_argument("--apenas", help="ids ou nomes separados por virgula")
+    a.add_argument("--pular", help="ids ou nomes separados por virgula")
+    a.add_argument("--refazer", action="store_true", help="refaz o que ja foi aplicado")
+    a.add_argument("--simular", action="store_true", help="mostra sem alterar nada")
+    a.set_defaults(func=cmd_aplicar)
+
+    i = sub.add_parser("instalar", help="instalacao completa, do zero")
+    i.add_argument("--mesmo-assim", action="store_true",
+                   help="ignora as verificacoes previas")
+    i.set_defaults(func=cmd_instalar)
+
+    c = sub.add_parser("config", help="le ou muda preferencias")
+    c.add_argument("pares", nargs="*", help="chave=valor")
+    c.add_argument("--so-gravar", action="store_true", help="nao reaplica nada")
+    c.set_defaults(func=cmd_config)
+
+    v = sub.add_parser("verificar", help="checagens previas")
+    v.set_defaults(func=cmd_verificar)
+
+    r = sub.add_parser("restaurar", help="volta o terminal ao que era antes do projeto")
+    r.add_argument("--sim", action="store_true", help="confirma")
+    r.add_argument("--apagar", action="store_true",
+                   help="remove tambem o que o projeto instalou: pacotes do apt, oh-my-posh, temas, fontes e dados do projeto")
+    r.set_defaults(func=cmd_restaurar)
+
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    caminhos.preparar()
+    caminhos.proteger_codigo()
+    parser = construir()
+    args = parser.parse_args(argv)
+    if not getattr(args, "func", None):
+        args = parser.parse_args(["web", *(argv or [])])
+    try:
+        return int(args.func(args) or 0)
+    except KeyboardInterrupt:
+        print("\n  interrompido")
+        return 130

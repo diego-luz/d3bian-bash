@@ -1,0 +1,160 @@
+[modulo]
+id = "60"
+nome = "cores"
+titulo = "Fonte e esquema de cores do terminal"
+requer = ["50"]
+afetada_por = ["cores", "fonte", "tamanho_fonte", "transparencia"]
+
+# Um script so para os dois terminais: cada um so e ajustado se estiver
+# instalado, e o xfce4-terminal aplica na hora nas janelas abertas.
+[[passo]]
+tipo = "script"
+dizer = "ajustando fonte e cores do terminal"
+corpo = '''
+fonte="$CTX_FONTE_FAMILIA $CTX_TAMANHO_FONTE"
+cores=$([ "$CTX_CORES" != manter ] && echo sim || echo nao)
+feito=0
+mkdir -p "$CTX_ESTADO_DIR"
+
+# O desfazer volta cada chave ao valor de antes, guardado aqui em linhas
+# "chave<TAB>valor" (so "chave" quando ela nao existia). O de antes e o da
+# primeira vez, trocado sempre que outro programa mudou a chave depois do que o
+# projeto escreveu: se o bigsur pintou o terminal depois da instalacao, o
+# desfazer volta ao bigsur, nao ao terminal de fabrica.
+# $1 arquivo do de antes, $2 o que o projeto escreveu, $3 funcao que le, resto: chaves
+guardar_antes() {
+  local orig=$1 escrito=$2 ler=$3 novo="" k agora antes ultimo
+  shift 3
+  for k in "$@"; do
+    agora=$("$ler" "$k")
+    antes="" ultimo=""
+    [ -f "$orig" ] && antes=$(awk -F'\t' -v k="$k" '$1 == k { print; exit }' "$orig")
+    [ -f "$escrito" ] && ultimo=$(awk -F'\t' -v k="$k" '$1 == k { print; exit }' "$escrito")
+    if [ -n "$ultimo" ]; then
+      if [ "$agora" != "$ultimo" ]; then antes=$agora; fi
+    elif [ -z "$antes" ] && [ ! -e "$CTX_ESTADO_DIR/aplicado/60" ]; then
+      # primeira vez; numa instalacao de antes deste registro o valor de agora
+      # ja e do projeto, e o desfazer usa a copia do XML
+      antes=$agora
+    fi
+    if [ -n "$antes" ]; then novo+="$antes"$'\n'; fi
+  done
+  printf '%s' "$novo" > "$orig"
+}
+
+if command -v xfce4-terminal >/dev/null && command -v xfconf-query >/dev/null; then
+  props_xfce="font-use-system font-name background-mode scrolling-bar color-use-theme color-foreground
+    color-background color-cursor color-bold-use-default color-palette background-darkness"
+  # LC_ALL=C: o double sai com ponto, igual em toda leitura
+  ler_xfce() {
+    local v
+    if v=$(LC_ALL=C xfconf-query -c xfce4-terminal -p "/$1" 2>/dev/null); then
+      printf '%s\t%s\n' "$1" "$v"
+    else
+      printf '%s\n' "$1"
+    fi
+  }
+  # shellcheck disable=SC2086
+  guardar_antes "$CTX_ESTADO_DIR/xfce4-terminal-original" "$CTX_ESTADO_DIR/xfce4-terminal-aplicado" \
+    ler_xfce $props_xfce
+  x() {
+    # a propriedade pode existir com outro tipo; recria
+    xfconf-query -c xfce4-terminal -p "$1" -t "$2" -s "$3" --create 2>/dev/null || {
+      xfconf-query -c xfce4-terminal -p "$1" -r 2>/dev/null || true
+      xfconf-query -c xfce4-terminal -p "$1" -t "$2" -s "$3" --create
+    }
+  }
+  x /font-use-system bool false
+  x /font-name string "$fonte"
+  # transparencia deixa o papel de parede passar por tras do prompt e as
+  # cores do esquema nao aparecem como no video; desligada volta ao solido
+  # mesmo com Manter nas cores
+  if [ "$CTX_TRANSPARENCIA" != nao ]; then
+    x /background-mode string TERMINAL_BACKGROUND_TRANSPARENT
+    x /background-darkness double "$CTX_OPACIDADE"
+  else
+    x /background-mode string TERMINAL_BACKGROUND_SOLID
+  fi
+  if [ "$cores" = sim ]; then
+    x /scrolling-bar string TERMINAL_SCROLLBAR_NONE
+    x /color-use-theme bool false
+    x /color-foreground string "$CTX_COR_TEXTO"
+    x /color-background string "$CTX_COR_FUNDO"
+    x /color-cursor string "$CTX_COR_TEXTO"
+    x /color-bold-use-default bool true
+    x /color-palette string "$CTX_PALETA_XFCE"
+  fi
+  # shellcheck disable=SC2086
+  for k in $props_xfce; do ler_xfce "$k"; done > "$CTX_ESTADO_DIR/xfce4-terminal-aplicado"
+  echo "xfce4-terminal: $fonte$([ "$cores" = sim ] && echo ", cores $CTX_CORES")$([ "$CTX_TRANSPARENCIA" != nao ] && echo ", fundo $CTX_OPACIDADE opaco")"
+  # todas as janelas saem de um processo so, que carregou as fontes quando
+  # abriu: a Nerd Font instalada depois nao existe para ele, e o texto fica
+  # espacado (d e s s e  j e i t o) e os icones viram quadrados. Janela nova
+  # do mesmo processo tambem; so resolve fechando todas
+  echo "feche TODAS as janelas do terminal e abra de novo (ou saia e entre na sessao); ate la as letras ficam espacadas"
+  feito=1
+fi
+
+if command -v gnome-terminal >/dev/null && command -v gsettings >/dev/null; then
+  perfil=$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'" || true)
+  if [ -n "$perfil" ]; then
+    p="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$perfil/"
+    chaves_gnome="use-system-font font use-theme-colors foreground-color background-color palette
+      use-transparent-background background-transparency-percent"
+    ler_gnome() { printf '%s\t%s\n' "$1" "$(gsettings get "$p" "$1")"; }
+    # o gsettings nao e arquivo: guarda os valores de antes para o desfazer
+    # shellcheck disable=SC2086
+    guardar_antes "$CTX_ESTADO_DIR/gnome-terminal-original" "$CTX_ESTADO_DIR/gnome-terminal-aplicado" \
+      ler_gnome $chaves_gnome
+    gsettings set "$p" use-system-font false
+    gsettings set "$p" font "$fonte"
+    if [ "$cores" = sim ]; then
+      gsettings set "$p" use-theme-colors false
+      gsettings set "$p" foreground-color "$CTX_COR_TEXTO"
+      gsettings set "$p" background-color "$CTX_COR_FUNDO"
+      gsettings set "$p" palette "$CTX_PALETA_GNOME"
+    fi
+    if [ "$CTX_TRANSPARENCIA" != nao ]; then
+      gsettings set "$p" use-transparent-background true
+      gsettings set "$p" background-transparency-percent "$CTX_TRANSPARENCIA_PCT"
+    else
+      gsettings set "$p" use-transparent-background false
+    fi
+    # shellcheck disable=SC2086
+    for k in $chaves_gnome; do ler_gnome "$k"; done > "$CTX_ESTADO_DIR/gnome-terminal-aplicado"
+    echo "gnome-terminal: $fonte$([ "$cores" = sim ] && echo ", cores $CTX_CORES")"
+    feito=1
+  fi
+fi
+
+if [ "$feito" = 0 ]; then
+  echo "nenhum terminal conhecido; escolha a fonte $fonte nas preferencias do seu terminal"
+fi
+'''
+
+# margem entre a borda da janela e o texto, no xfce4-terminal e no GNOME
+# Terminal (os dois desenham com VTE); vale para as janelas abertas depois
+[[passo]]
+tipo = "bloco"
+destino = "~/.config/gtk-3.0/gtk.css"
+marca = "@@NOME@@ margem"
+conteudo = '''
+vte-terminal, VteTerminal { padding: 10px 14px; }
+'''
+
+# pasta de pendrive legivel no ls de o bash
+[[passo]]
+tipo = "arquivo"
+destino = "@@bash_confd@@/@@NOME@@-15-ls-cores.bash"
+conteudo = '''
+# gerado pelo @@NOME@@; mude pela pagina de Ajustes, nao aqui
+# Pendrive, cartao de memoria e particao do Windows (NTFS, FAT, exFAT) mostram
+# tudo com permissao 777. O padrao do ls pinta pasta assim de azul sobre fundo
+# verde, e nas paletas do projeto o nome some; aqui ela fica igual a uma pasta
+# comum. Os arquivos continuam verdes: para o Linux eles sao executaveis
+[ -n "${LS_COLORS-}" ] || eval "$(dircolors -b)"
+case ":$LS_COLORS:" in
+  *":ow=01;34:tw=01;34:"*) ;;
+  *) export LS_COLORS="${LS_COLORS%:}:ow=01;34:tw=01;34:" ;;
+esac
+'''

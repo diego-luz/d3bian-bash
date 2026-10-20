@@ -1,0 +1,35 @@
+[modulo]
+id = "50"
+nome = "fonte"
+titulo = "Nerd Font"
+requer = ["10"]
+afetada_por = ["fonte"]
+
+[[passo]]
+tipo = "script"
+dizer = "instalando a @@fonte_familia@@ (download de 2 a 40 MB, conforme a fonte)"
+corpo = '''
+if fc-list : family | grep -qiF "$CTX_FONTE_FAMILIA"; then
+  echo "$CTX_FONTE_FAMILIA ja instalada"
+  exit 0
+fi
+destino="$HOME/.local/share/fonts/NerdFonts/$CTX_FONTE_ARQUIVO"
+# pasta que ja existia (com outras fontes da pessoa) nao entra na lista do desfazer
+nova=0; [ -d "$destino" ] || nova=1
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+curl -fsSL -o "$tmp" \
+  "https://github.com/ryanoasis/nerd-fonts/releases/download/$CTX_NERD_VERSAO/$CTX_FONTE_ARQUIVO.tar.xz"
+# versao fixa, conferida pelo SHA-256.txt do proprio release (projeto.py)
+echo "$CTX_FONTE_SHA256  $tmp" | sha256sum -c --quiet - \
+  || { echo "a fonte baixada nao confere com o esperado; nada foi instalado" >&2; exit 1; }
+mkdir -p "$destino"
+tar -xJf "$tmp" -C "$destino" --no-same-owner
+# so a pasta nova: fc-cache -f em tudo demora e parece travado
+fc-cache -f "$destino"
+echo "fonte copiada para $destino"
+# anotado para o desfazer com "apagar", so se a pasta foi criada aqui
+if [ "$nova" = 1 ]; then
+  mkdir -p "$CTX_ESTADO_DIR" && echo "$destino" >> "$CTX_ESTADO_DIR/arquivos-criados"
+fi
+'''

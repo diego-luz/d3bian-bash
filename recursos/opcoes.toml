@@ -1,0 +1,107 @@
+# Preferencias que a pagina de Ajustes desenha e que as receitas usam.
+#
+# Cada [[opcao]] vira uma linha na pagina, dentro do cartao do seu grupo, e
+# uma chave @@chave@@ nas receitas. A lista de valores tambem e a validacao:
+# o servidor recusa o que nao estiver nela.
+#
+# Os valores de fonte e de cores sao chaves das tabelas do projeto.py, que
+# calcula o nome do arquivo, a familia e as paletas.
+
+[[opcao]]
+chave = "shell_padrao"
+padrao = "sim"
+valores = ["sim", "nao"]
+titulo = "Bash como shell padrao"
+ajuda = "Se o login usa zsh ou fish, volta para o bash com chsh; Nao devolve o shell de antes do projeto"
+grupo = "Shell"
+nomes = { sim = "Bash", nao = "O de antes" }
+
+[[opcao]]
+chave = "base"
+padrao = "sim"
+valores = ["sim", "nao"]
+titulo = "Bash mais confortavel"
+ajuda = "Historico grande sem repetidos, setas que procuram pelo comeco, completar sem diferenca de maiusculas, cd so com o nome da pasta"
+grupo = "Shell"
+
+[[opcao]]
+chave = "blesh"
+padrao = "sim"
+valores = ["sim", "nao"]
+titulo = "Sugestoes e realce enquanto digita"
+ajuda = "Pelo ble.sh, como no fish: o resto do comando aparece apagado (seta para a direita aceita) e o que nao existe fica vermelho"
+grupo = "Shell"
+
+[[opcao]]
+chave = "fzf"
+padrao = "sim"
+valores = ["sim", "nao"]
+titulo = "Busca com fzf"
+ajuda = "Ctrl+R procura no historico, Ctrl+T acha arquivos e Alt+C entra em pastas"
+grupo = "Shell"
+
+[[opcao]]
+chave = "saudacao"
+padrao = "digitando"
+valores = ["digitando", "simples", "nenhuma"]
+titulo = "Saudacao ao abrir o bash"
+ajuda = "Ola, nome e data; digitando letra por letra ou de uma vez"
+grupo = "Shell"
+nomes = { digitando = "Digitando", simples = "Simples", nenhuma = "Nenhuma" }
+
+[[opcao]]
+chave = "tema_posh"
+padrao = "montys"
+valores = ["montys", "montys-sem-git", "atomic", "atomic-sem-git", "jandedobbeleer", "jandedobbeleer-sem-git", "catppuccin_mocha", "catppuccin_mocha-sem-git", "catppuccin", "catppuccin-sem-git", "dracula", "dracula-sem-git", "M365Princess", "M365Princess-sem-git", "cinnamon", "cobalt2", "craver", "craver-sem-git", "gruvbox", "gruvbox-sem-git", "half-life", "huvix", "kali", "lambda", "amro", "avit", "nordtron", "onehalf.minimal", "paradox", "powerlevel10k_rainbow", "powerlevel10k_rainbow-sem-git", "pure", "pure-sem-git", "spaceship", "star", "tiwahu", "tokyonight_storm", "tokyonight_storm-sem-git", "velvet", "unicorn", "stelbent-compact.minimal", "night-owl", "robbyrussell", "zash", "ys", "sorin", "space", "the-unnamed", "powerlevel10k_lean", "material", "pararussel", "xtoys"]
+titulo = "Tema do Oh My Posh"
+ajuda = "Qualquer arquivo de ~/.poshthemes, sem o .omp.json; os sem git nao mostram o ramo (main). Escolha um ou digite outro"
+grupo = "Prompt"
+livre = '[A-Za-z0-9][A-Za-z0-9._\-]{0,60}'
+nomes = { "montys" = "Montys", "montys-sem-git" = "Montys · sem git (sem o main)", "atomic" = "Atomic", "atomic-sem-git" = "Atomic · sem git (sem o main)", "jandedobbeleer" = "Jan De Dobbeleer", "jandedobbeleer-sem-git" = "Jan De Dobbeleer · sem git (sem o main)", "catppuccin_mocha" = "Catppuccin Mocha", "catppuccin_mocha-sem-git" = "Catppuccin Mocha · sem git (sem o main)", "catppuccin" = "Catppuccin (bolhas)", "catppuccin-sem-git" = "Catppuccin (bolhas) · sem git (sem o main)", "dracula" = "Dracula", "dracula-sem-git" = "Dracula · sem git (sem o main)", "M365Princess" = "M365 Princess", "M365Princess-sem-git" = "M365 Princess · sem git (sem o main)", "cinnamon" = "Cinnamon", "cobalt2" = "Cobalt2", "craver" = "Craver", "craver-sem-git" = "Craver · sem git (sem o main)", "gruvbox" = "Gruvbox", "gruvbox-sem-git" = "Gruvbox · sem git (sem o main)", "half-life" = "Half-Life", "huvix" = "Huvix", "kali" = "Kali", "lambda" = "Lambda · minimalista", "amro" = "Amro", "avit" = "Avit · minimalista", "nordtron" = "Nordtron", "onehalf.minimal" = "One Half · minimalista", "paradox" = "Paradox", "powerlevel10k_rainbow" = "Powerlevel10k Rainbow", "powerlevel10k_rainbow-sem-git" = "Powerlevel10k Rainbow · sem git (sem o main)", "pure" = "Pure · minimalista", "pure-sem-git" = "Pure · sem git (sem o main)", "spaceship" = "Spaceship · minimalista", "star" = "Star · minimalista", "tiwahu" = "Tiwahu", "tokyonight_storm" = "Tokyo Night Storm", "tokyonight_storm-sem-git" = "Tokyo Night Storm · sem git (sem o main)", "velvet" = "Velvet", "unicorn" = "Unicorn", "stelbent-compact.minimal" = "Stelbent compacto · minimalista", "night-owl" = "Night Owl", "robbyrussell" = "Robby Russell · minimalista", "zash" = "Zash · minimalista", "ys" = "YS · minimalista", "sorin" = "Sorin · minimalista", "space" = "Space · minimalista", "the-unnamed" = "The Unnamed · minimalista", "powerlevel10k_lean" = "Powerlevel10k Lean · minimalista", "material" = "Material · minimalista", "pararussel" = "Pararussel · minimalista", "xtoys" = "Xtoys · minimalista" }
+exemplos = { "montys" = "prompt-montys.png", "montys-sem-git" = "prompt-montys-sem-git.png", "atomic" = "prompt-atomic.png", "atomic-sem-git" = "prompt-atomic-sem-git.png", "jandedobbeleer" = "prompt-jandedobbeleer.png", "jandedobbeleer-sem-git" = "prompt-jandedobbeleer-sem-git.png", "catppuccin_mocha" = "prompt-catppuccin_mocha.png", "catppuccin_mocha-sem-git" = "prompt-catppuccin_mocha-sem-git.png", "catppuccin" = "prompt-catppuccin.png", "catppuccin-sem-git" = "prompt-catppuccin-sem-git.png", "dracula" = "prompt-dracula.png", "dracula-sem-git" = "prompt-dracula-sem-git.png", "M365Princess" = "prompt-M365Princess.png", "M365Princess-sem-git" = "prompt-M365Princess-sem-git.png", "cinnamon" = "prompt-cinnamon.png", "cobalt2" = "prompt-cobalt2.png", "craver" = "prompt-craver.png", "craver-sem-git" = "prompt-craver-sem-git.png", "gruvbox" = "prompt-gruvbox.png", "gruvbox-sem-git" = "prompt-gruvbox-sem-git.png", "half-life" = "prompt-half-life.png", "huvix" = "prompt-huvix.png", "kali" = "prompt-kali.png", "lambda" = "prompt-lambda.png", "amro" = "prompt-amro.png", "avit" = "prompt-avit.png", "nordtron" = "prompt-nordtron.png", "onehalf.minimal" = "prompt-onehalf.minimal.png", "paradox" = "prompt-paradox.png", "powerlevel10k_rainbow" = "prompt-powerlevel10k_rainbow.png", "powerlevel10k_rainbow-sem-git" = "prompt-powerlevel10k_rainbow-sem-git.png", "pure" = "prompt-pure.png", "pure-sem-git" = "prompt-pure-sem-git.png", "spaceship" = "prompt-spaceship.png", "star" = "prompt-star.png", "tiwahu" = "prompt-tiwahu.png", "tokyonight_storm" = "prompt-tokyonight_storm.png", "tokyonight_storm-sem-git" = "prompt-tokyonight_storm-sem-git.png", "velvet" = "prompt-velvet.png", "unicorn" = "prompt-unicorn.png", "stelbent-compact.minimal" = "prompt-stelbent-compact.minimal.png", "night-owl" = "prompt-night-owl.png", "robbyrussell" = "prompt-robbyrussell.png", "zash" = "prompt-zash.png", "ys" = "prompt-ys.png", "sorin" = "prompt-sorin.png", "space" = "prompt-space.png", "the-unnamed" = "prompt-the-unnamed.png", "powerlevel10k_lean" = "prompt-powerlevel10k_lean.png", "material" = "prompt-material.png", "pararussel" = "prompt-pararussel.png", "xtoys" = "prompt-xtoys.png" }
+
+[[opcao]]
+chave = "fonte"
+padrao = "firacode"
+valores = ["firacode", "jetbrainsmono", "hack", "meslo", "cascadia"]
+titulo = "Nerd Font do terminal"
+ajuda = "Os icones do prompt so aparecem com uma Nerd Font"
+grupo = "Terminal"
+nomes = { firacode = "FiraCode", jetbrainsmono = "JetBrains Mono", hack = "Hack", meslo = "Meslo", cascadia = "Cascadia (Caskaydia)" }
+
+[[opcao]]
+chave = "tamanho_fonte"
+padrao = "12"
+valores = ["10", "11", "12", "13", "14", "16"]
+titulo = "Tamanho da fonte"
+ajuda = "Em pontos"
+grupo = "Terminal"
+
+[[opcao]]
+chave = "cores"
+padrao = "everforest"
+valores = ["everforest", "everforest_medio", "everforest_claro", "catppuccin", "catppuccin_macchiato", "catppuccin_frappe", "catppuccin_latte", "dracula", "nord", "gruvbox", "gruvbox_material", "gruvbox_claro", "tokyonight", "tokyonight_storm", "tokyonight_day", "rosepine", "rosepine_moon", "rosepine_dawn", "kanagawa", "kanagawa_dragon", "onedark", "solarized", "solarized_claro", "monokai_pro", "ayu", "ayu_mirage", "night_owl", "material_ocean", "github_dark", "github_claro", "nightfox", "carbonfox", "oxocarbon", "sonokai", "poimandres", "vesper", "iceberg", "doom_one", "ubuntu", "manter"]
+titulo = "Esquema de cores"
+ajuda = "No xfce4-terminal e no GNOME Terminal; Manter nao mexe nas cores"
+grupo = "Terminal"
+nomes = { "everforest" = "Everforest Dark Hard", "everforest_medio" = "Everforest Dark Medium", "everforest_claro" = "Everforest Light · claro", "catppuccin" = "Catppuccin Mocha", "catppuccin_macchiato" = "Catppuccin Macchiato", "catppuccin_frappe" = "Catppuccin Frappé", "catppuccin_latte" = "Catppuccin Latte · claro", "dracula" = "Dracula", "nord" = "Nord", "gruvbox" = "Gruvbox Dark", "gruvbox_material" = "Gruvbox Material", "gruvbox_claro" = "Gruvbox Light · claro", "tokyonight" = "Tokyo Night", "tokyonight_storm" = "Tokyo Night Storm", "tokyonight_day" = "Tokyo Night Day · claro", "rosepine" = "Rosé Pine · minimalista", "rosepine_moon" = "Rosé Pine Moon · minimalista", "rosepine_dawn" = "Rosé Pine Dawn · claro", "kanagawa" = "Kanagawa · minimalista", "kanagawa_dragon" = "Kanagawa Dragon · minimalista", "onedark" = "One Dark", "solarized" = "Solarized Dark", "solarized_claro" = "Solarized Light · claro", "monokai_pro" = "Monokai Pro", "ayu" = "Ayu Dark", "ayu_mirage" = "Ayu Mirage", "night_owl" = "Night Owl", "material_ocean" = "Material Ocean", "github_dark" = "GitHub Dark", "github_claro" = "GitHub Light · claro", "nightfox" = "Nightfox", "carbonfox" = "Carbonfox", "oxocarbon" = "Oxocarbon", "sonokai" = "Sonokai", "poimandres" = "Poimandres", "vesper" = "Vesper · minimalista", "iceberg" = "Iceberg · minimalista", "doom_one" = "Doom One", "ubuntu" = "Ubuntu", "manter" = "Manter as atuais" }
+exemplos = { "everforest" = "cores-everforest.png", "everforest_medio" = "cores-everforest_medio.png", "everforest_claro" = "cores-everforest_claro.png", "catppuccin" = "cores-catppuccin.png", "catppuccin_macchiato" = "cores-catppuccin_macchiato.png", "catppuccin_frappe" = "cores-catppuccin_frappe.png", "catppuccin_latte" = "cores-catppuccin_latte.png", "dracula" = "cores-dracula.png", "nord" = "cores-nord.png", "gruvbox" = "cores-gruvbox.png", "gruvbox_material" = "cores-gruvbox_material.png", "gruvbox_claro" = "cores-gruvbox_claro.png", "tokyonight" = "cores-tokyonight.png", "tokyonight_storm" = "cores-tokyonight_storm.png", "tokyonight_day" = "cores-tokyonight_day.png", "rosepine" = "cores-rosepine.png", "rosepine_moon" = "cores-rosepine_moon.png", "rosepine_dawn" = "cores-rosepine_dawn.png", "kanagawa" = "cores-kanagawa.png", "kanagawa_dragon" = "cores-kanagawa_dragon.png", "onedark" = "cores-onedark.png", "solarized" = "cores-solarized.png", "solarized_claro" = "cores-solarized_claro.png", "monokai_pro" = "cores-monokai_pro.png", "ayu" = "cores-ayu.png", "ayu_mirage" = "cores-ayu_mirage.png", "night_owl" = "cores-night_owl.png", "material_ocean" = "cores-material_ocean.png", "github_dark" = "cores-github_dark.png", "github_claro" = "cores-github_claro.png", "nightfox" = "cores-nightfox.png", "carbonfox" = "cores-carbonfox.png", "oxocarbon" = "cores-oxocarbon.png", "sonokai" = "cores-sonokai.png", "poimandres" = "cores-poimandres.png", "vesper" = "cores-vesper.png", "iceberg" = "cores-iceberg.png", "doom_one" = "cores-doom_one.png", "ubuntu" = "cores-ubuntu.png" }
+
+[[opcao]]
+chave = "transparencia"
+padrao = "media"
+valores = ["nao", "leve", "media", "forte"]
+titulo = "Fundo transparente"
+ajuda = "No xfce4-terminal e no GNOME Terminal; o papel de parede aparece atras do texto e as cores ficam menos fieis as da Galeria"
+grupo = "Terminal"
+nomes = { nao = "Desligada · fundo sólido, como o terminal vem", leve = "Leve (92% opaco)", media = "Média (85% opaco)", forte = "Forte (75% opaco)" }
+
+[[opcao]]
+chave = "fastfetch"
+padrao = "exemplo-13"
+valores = ["nenhum", "minimo", "compacto", "minimal", "os", "gatinho", "icones", "grupos", "hypr", "kraken", "exemplo-7", "exemplo-8", "exemplo-9", "exemplo-12", "exemplo-13", "exemplo-16", "exemplo-17", "exemplo-23", "exemplo-24", "exemplo-26"]
+titulo = "Fastfetch ao abrir o terminal"
+ajuda = "Resumo do sistema com o logo do Debian; veja cada um na Galeria"
+grupo = "Terminal"
+nomes = { "nenhum" = "Nenhum", "minimo" = "Mínimo · minimalista", "compacto" = "Compacto · minimalista", "minimal" = "Minimal (LierB) · minimalista", "os" = "OS (LierB) · minimalista", "gatinho" = "Gatinho ASCII (LierB)", "icones" = "Ícones (LierB)", "grupos" = "Grupos (LierB)", "hypr" = "Hypr (LierB)", "kraken" = "Kraken", "exemplo-7" = "Exemplo oficial 7", "exemplo-8" = "Exemplo oficial 8", "exemplo-9" = "Exemplo oficial 9", "exemplo-12" = "Exemplo oficial 12", "exemplo-13" = "Exemplo oficial 13", "exemplo-16" = "Exemplo oficial 16", "exemplo-17" = "Exemplo oficial 17", "exemplo-23" = "Exemplo oficial 23", "exemplo-24" = "Exemplo oficial 24 (jan-rex)", "exemplo-26" = "Exemplo oficial 26" }
+exemplos = { "minimo" = "fastfetch-minimo.png", "compacto" = "fastfetch-compacto.png", "minimal" = "fastfetch-minimal.png", "os" = "fastfetch-os.png", "gatinho" = "fastfetch-gatinho.png", "icones" = "fastfetch-icones.png", "grupos" = "fastfetch-grupos.png", "hypr" = "fastfetch-hypr.png", "kraken" = "fastfetch-kraken.png", "exemplo-7" = "fastfetch-exemplo-7.png", "exemplo-8" = "fastfetch-exemplo-8.png", "exemplo-9" = "fastfetch-exemplo-9.png", "exemplo-12" = "fastfetch-exemplo-12.png", "exemplo-13" = "fastfetch-exemplo-13.png", "exemplo-16" = "fastfetch-exemplo-16.png", "exemplo-17" = "fastfetch-exemplo-17.png", "exemplo-23" = "fastfetch-exemplo-23.png", "exemplo-24" = "fastfetch-exemplo-24.png", "exemplo-26" = "fastfetch-exemplo-26.png" }

@@ -1,0 +1,53 @@
+[modulo]
+id = "70"
+nome = "fastfetch"
+titulo = "Fastfetch ao abrir o terminal"
+requer = ["10"]
+afetada_por = ["fastfetch"]
+
+[[passo]]
+tipo = "apt"
+se = "fastfetch != nenhum"
+dizer = "conferindo o fastfetch"
+pacotes = ["fastfetch"]
+
+# o apt so diz "ignorados" quando o pacote nao existe; em Ubuntu e Mint mais
+# antigos isso passa despercebido. "atencao:" sai em amarelo no log da pagina
+[[passo]]
+tipo = "script"
+se = "fastfetch != nenhum"
+tolera_falha = true
+corpo = '''
+if ! command -v fastfetch >/dev/null; then
+  distro=$(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-esta versao}")
+  echo "atencao: o fastfetch nao esta no repositorio do $distro."
+  echo "atencao: a opcao Fastfetch fica sem efeito; o resto do terminal segue normal."
+fi
+'''
+
+# os presets adaptados ficam numa pasta so deles: o copiar troca a pasta
+# inteira, e nao pode levar junto presets que a pessoa tenha feito
+[[passo]]
+tipo = "copiar"
+se = "fastfetch != nenhum"
+origem = "@@arquivos@@/fastfetch"
+destino = "~/.local/share/fastfetch/presets/d3bian"
+
+[[passo]]
+tipo = "arquivo"
+se = "fastfetch != nenhum"
+destino = "@@bash_confd@@/@@NOME@@-70-fastfetch.bash"
+conteudo = '''
+# gerado pelo @@NOME@@; mude pela pagina de Ajustes ou pela Galeria, nao aqui
+if command -v fastfetch >/dev/null; then
+  fastfetch --config "@@fastfetch_config@@"
+fi
+'''
+
+[[passo]]
+tipo = "script"
+se = "fastfetch == nenhum"
+dizer = "tirando o fastfetch da abertura do terminal"
+corpo = '''
+rm -f "$CTX_BASH_CONFD/$CTX_NOME-70-fastfetch.bash"
+'''

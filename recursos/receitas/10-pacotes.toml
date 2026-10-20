@@ -1,0 +1,21 @@
+[modulo]
+id = "10"
+nome = "pacotes"
+titulo = "Completar do bash e ferramentas de download"
+# nucleo: a maquina so conta como preparada depois das receitas marcadas assim
+nucleo = true
+afetada_por = []
+
+[[passo]]
+tipo = "comando"
+dizer = "atualizando o indice do apt"
+root = true
+tolera_falha = true
+argumentos = ["apt-get", "update"]
+
+# o bash ja vem no Debian; daqui so o completar mais esperto e o que os
+# downloads precisam. Sem zsh e sem fish
+[[passo]]
+tipo = "apt"
+dizer = "completar do bash e o que os downloads precisam"
+pacotes = ["bash-completion", "curl", "ca-certificates", "unzip", "xz-utils", "fontconfig"]

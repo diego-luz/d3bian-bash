@@ -1,0 +1,65 @@
+[modulo]
+id = "30"
+nome = "ohmyposh"
+titulo = "Oh My Posh e os temas oficiais"
+nucleo = true
+requer = ["10"]
+afetada_por = []
+
+# Ja instalado fica como esta; para atualizar depois, `oh-my-posh upgrade`.
+# Versao e SHA-256 fixos no projeto.py (POSH_VERSAO, POSH_SHA256).
+[[passo]]
+tipo = "script"
+dizer = "instalando o oh-my-posh em /usr/local/bin (download de cerca de 30 MB)"
+corpo = '''
+# este trecho tem sudo: nada de rodar o programa aqui (o primeiro oh-my-posh
+# do PATH pode ser um ~/.local/bin/oh-my-posh qualquer)
+if command -v oh-my-posh >/dev/null; then
+  echo "oh-my-posh ja instalado em $(command -v oh-my-posh)"
+  exit 0
+fi
+if [ -z "$CTX_POSH_ARQUITETURA" ]; then
+  echo "arquitetura sem binario do oh-my-posh: $(uname -m)" >&2
+  exit 1
+fi
+tmp=$(mktemp)
+raiz=""
+trap 'rm -f "$tmp"; [ -z "$raiz" ] || sudo -n rm -rf "$raiz"' EXIT
+curl -fsSL -o "$tmp" \
+  "https://github.com/JanDeDobbeleer/oh-my-posh/releases/download/$CTX_POSH_VERSAO/posh-linux-$CTX_POSH_ARQUITETURA"
+# versao fixa, conferida antes de virar programa do sistema
+echo "$CTX_POSH_SHA256  $tmp" | sha256sum -c --quiet - \
+  || { echo "o oh-my-posh baixado nao confere com o esperado; nada foi instalado" >&2; exit 1; }
+# o download fica numa pasta do usuario: o root copia para uma pasta so dele,
+# confere de novo la e instala de la, como root
+[ ! -L "$tmp" ] || { echo "o download virou link simbolico; nada foi instalado" >&2; exit 1; }
+raiz=$(sudo -n mktemp -d)
+sudo -n cp --no-preserve=all "$tmp" "$raiz/oh-my-posh"
+echo "$CTX_POSH_SHA256  $raiz/oh-my-posh" | sudo -n sha256sum -c --quiet - \
+  || { echo "o oh-my-posh copiado nao confere com o esperado; nada foi instalado" >&2; exit 1; }
+sudo -n install -o root -g root -m 0755 "$raiz/oh-my-posh" /usr/local/bin/oh-my-posh
+# anotado para o desfazer com "apagar": so remove o que o projeto pos aqui
+mkdir -p "$CTX_ESTADO_DIR" && echo /usr/local/bin/oh-my-posh >> "$CTX_ESTADO_DIR/arquivos-criados"
+echo "oh-my-posh $CTX_POSH_VERSAO instalado"
+'''
+
+[[passo]]
+tipo = "script"
+dizer = "baixando os temas para ~/.poshthemes"
+corpo = '''
+destino="$HOME/.poshthemes"
+# pasta que ja existia e da pessoa; so a criada aqui entra na lista do desfazer
+if [ ! -d "$destino" ]; then
+  mkdir -p "$CTX_ESTADO_DIR" && echo "$destino" >> "$CTX_ESTADO_DIR/arquivos-criados"
+fi
+mkdir -p "$destino"
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+curl -fsSL -o "$tmp" \
+  "https://github.com/JanDeDobbeleer/oh-my-posh/releases/download/$CTX_POSH_VERSAO/themes.zip"
+echo "$CTX_POSH_TEMAS_SHA256  $tmp" | sha256sum -c --quiet - \
+  || { echo "os temas baixados nao conferem com o esperado; nada foi mudado" >&2; exit 1; }
+unzip -oq "$tmp" -d "$destino"
+chmod u+rw "$destino"/*.json
+echo "$(ls "$destino"/*.omp.json | wc -l) temas em $destino"
+'''

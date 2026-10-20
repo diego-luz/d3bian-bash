@@ -1,0 +1,263 @@
+[modulo]
+id = "20"
+nome = "bash"
+titulo = "Bash como shell padrao, sugestoes, realce e saudacao"
+requer = ["10"]
+afetada_por = ["shell_padrao", "base", "blesh", "fzf", "saudacao"]
+
+# O ~/.bashrc do usuario fica como esta e ganha so um bloco marcado, no fim, que
+# carrega os arquivos de conf.d em ordem de nome. A ordem importa: o ble.sh entra
+# primeiro sem se ligar (--noattach) e so liga no ultimo arquivo, depois de o
+# prompt e as teclas estarem prontos, como o ble.sh pede.
+#   05 ble.sh   10 base   30 fzf   40 prompt (receita 40)   70 fastfetch (receita 70)
+#   75 saudacao   99 liga o ble.sh
+[[passo]]
+tipo = "bloco"
+destino = "~/.bashrc"
+comentario = "#"
+conteudo = '''
+case $- in *i*)
+  for __d3_arquivo in "$HOME"/.config/bash/conf.d/*.bash; do
+    [ -r "$__d3_arquivo" ] && . "$__d3_arquivo"
+  done
+  unset __d3_arquivo ;;
+esac
+'''
+
+[[passo]]
+tipo = "arquivo"
+se = "base == sim"
+destino = "@@bash_confd@@/@@NOME@@-10-base.bash"
+modelo = "base.bash"
+
+[[passo]]
+tipo = "script"
+se = "base == nao"
+corpo = '''
+rm -f "$CTX_BASH_CONFD/$CTX_NOME-10-base.bash"
+'''
+
+# O ble.sh troca o editor de linha do bash: sugestao apagada do resto do comando
+# (seta para a direita aceita) e realce de sintaxe, como no fish. Nao esta no
+# repositorio do Debian; vem do release nightly do autor, instalado so para a
+# pessoa em ~/.local/share/blesh. Ja instalado fica como esta. O arquivo e um
+# nightly com data fixa e SHA-256 conferido (BLESH_ARQUIVO, BLESH_SHA256 no
+# projeto.py): o "ble-nightly.tar.xz" sem data muda a cada versao do autor
+[[passo]]
+tipo = "script"
+se = "blesh == sim"
+dizer = "instalando o ble.sh em ~/.local/share/blesh (download de cerca de 600 KB)"
+corpo = '''
+dados="${XDG_DATA_HOME:-$HOME/.local/share}"
+if [ -r "$dados/blesh/ble.sh" ]; then
+  echo "ble.sh ja instalado"
+  exit 0
+fi
+mkdir -p "$CTX_ESTADO_DIR"
+# o que nao existia entra na lista do desfazer com "apagar"; cache e historico
+# do ble.sh so aparecem quando o bash abre, mas ja ficam anotados
+for p in "$dados/blesh" "${XDG_CACHE_HOME:-$HOME/.cache}/blesh" "${XDG_STATE_HOME:-$HOME/.local/state}/blesh"; do
+  [ -e "$p" ] || echo "$p" >> "$CTX_ESTADO_DIR/arquivos-criados"
+done
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+# o "+" do nome vai como %2B na URL
+curl -fsSL -o "$tmp/ble.tar.xz" \
+  "https://github.com/akinomyoga/ble.sh/releases/download/nightly/${CTX_BLESH_ARQUIVO//+/%2B}"
+echo "$CTX_BLESH_SHA256  $tmp/ble.tar.xz" | sha256sum -c --quiet - \
+  || { echo "o ble.sh baixado nao confere com o esperado; nada foi instalado" >&2; exit 1; }
+tar -xJf "$tmp/ble.tar.xz" -C "$tmp" --no-same-owner
+bash "$tmp"/ble-nightly*/ble.sh --install "$dados" >/dev/null
+[ -r "$dados/blesh/ble.sh" ] || { echo "o ble.sh nao ficou em $dados/blesh" >&2; exit 1; }
+echo "ble.sh $(sed -n 's/^ *_ble_init_version=//p' "$dados/blesh/ble.sh" | head -1) instalado"
+'''
+
+# Na primeira vez o ble.sh monta os caches do terminal e demora alguns segundos;
+# o que se digita nesse tempo sai embaralhado. Aqui ele abre uma vez num terminal
+# de mentira (pty), monta tudo e sai, para a primeira janela de verdade vir pronta
+[[passo]]
+tipo = "script"
+se = "blesh == sim"
+dizer = "preparando o ble.sh para a primeira janela"
+tolera_falha = true
+corpo = '''
+python3 - "${XDG_DATA_HOME:-$HOME/.local/share}/blesh/ble.sh" <<'PY'
+import os, pty, select, sys, tempfile, time
+ble = sys.argv[1]
+with tempfile.NamedTemporaryFile("w", suffix=".bashrc", delete=False) as rc:
+    rc.write(f"source '{ble}'\n")
+pid, fd = pty.fork()
+if pid == 0:
+    os.environ["TERM"] = "xterm-256color"
+    os.execvp("bash", ["bash", "--rcfile", rc.name, "-i"])
+fim, quieto, visto = time.time() + 120, time.time(), False
+while time.time() < fim:
+    r, _, _ = select.select([fd], [], [], 0.2)
+    if r:
+        try:
+            bloco = os.read(fd, 65536)
+        except OSError:
+            break
+        if not bloco:
+            break
+        visto, quieto = True, time.time()
+        if b"\x1b[6n" in bloco:
+            os.write(fd, b"\x1b[1;1R")
+    elif visto and time.time() - quieto > 4:
+        break
+os.write(fd, b"exit\r")
+time.sleep(2)
+os.unlink(rc.name)
+print("caches do ble.sh prontos")
+PY
+'''
+
+[[passo]]
+tipo = "arquivo"
+se = "blesh == sim"
+destino = "@@bash_confd@@/@@NOME@@-05-blesh.bash"
+conteudo = '''
+# gerado pelo @@NOME@@; mude pela pagina de Ajustes, nao aqui
+# carrega o ble.sh sem ligar; o arquivo 99 liga depois do resto
+__d3_blesh=${XDG_DATA_HOME:-$HOME/.local/share}/blesh/ble.sh
+if [[ -r $__d3_blesh && -t 0 && -t 1 ]]; then
+  source "$__d3_blesh" --noattach
+fi
+unset __d3_blesh
+'''
+
+[[passo]]
+tipo = "arquivo"
+se = "blesh == sim"
+destino = "@@bash_confd@@/@@NOME@@-99-blesh.bash"
+conteudo = '''
+# gerado pelo @@NOME@@; mude pela pagina de Ajustes, nao aqui
+# por ultimo: o ble.sh precisa ver o prompt e as teclas que os outros criaram
+[[ ! ${BLE_VERSION-} ]] || ble-attach
+'''
+
+[[passo]]
+tipo = "script"
+se = "blesh == nao"
+corpo = '''
+rm -f "$CTX_BASH_CONFD/$CTX_NOME-05-blesh.bash" "$CTX_BASH_CONFD/$CTX_NOME-99-blesh.bash"
+'''
+
+[[passo]]
+tipo = "apt"
+se = "fzf == sim"
+dizer = "conferindo o fzf"
+pacotes = ["fzf"]
+
+[[passo]]
+tipo = "arquivo"
+se = "fzf == sim"
+destino = "@@bash_confd@@/@@NOME@@-30-fzf.bash"
+conteudo = '''
+# gerado pelo @@NOME@@; mude pela pagina de Ajustes, nao aqui
+# Ctrl+R historico, Ctrl+T arquivos, Alt+C pastas, **<Tab> completa com o fzf
+if command -v fzf >/dev/null; then
+  if [[ ${BLE_VERSION-} ]]; then
+    # com o ble.sh ligado, a integracao dele no lugar dos atalhos do fzf
+    ble-import -d integration/fzf-completion
+    ble-import -d integration/fzf-key-bindings
+  else
+    eval "$(fzf --bash)"
+  fi
+fi
+'''
+
+[[passo]]
+tipo = "script"
+se = "fzf == nao"
+corpo = '''
+rm -f "$CTX_BASH_CONFD/$CTX_NOME-30-fzf.bash"
+'''
+
+[[passo]]
+tipo = "arquivo"
+se = "saudacao == digitando"
+destino = "@@bash_confd@@/@@NOME@@-75-saudacao.bash"
+modelo = "saudacao-digitando.bash"
+
+[[passo]]
+tipo = "arquivo"
+se = "saudacao == simples"
+destino = "@@bash_confd@@/@@NOME@@-75-saudacao.bash"
+modelo = "saudacao-simples.bash"
+
+[[passo]]
+tipo = "script"
+se = "saudacao == nenhuma"
+corpo = '''
+rm -f "$CTX_BASH_CONFD/$CTX_NOME-75-saudacao.bash"
+'''
+
+# Nos dois sentidos o passo confere o cadastro depois do chsh e falha se nao
+# mudou. E avisa quando a sessao grafica ainda guarda o SHELL de quando entrou:
+# o terminal abre esse, e so sair e entrar na sessao troca (fechar as janelas
+# nao basta).
+[[passo]]
+tipo = "script"
+se = "shell_padrao == sim"
+dizer = "deixando o bash como shell do login"
+corpo = '''
+bash_bin=/bin/bash
+usuario=${CTX_USUARIO:-$(id -un)}
+case "$(getent passwd "$usuario" | cut -d: -f7)" in
+  */bash) echo "o bash ja e o shell do login" ;;
+  *) sudo -n chsh -s "$bash_bin" "$usuario" || true ;;
+esac
+agora=$(getent passwd "$usuario" | cut -d: -f7)
+case "$agora" in
+  */bash) ;;
+  *) echo "o shell do login continua $agora; rode: chsh -s $bash_bin" >&2
+     exit 1 ;;
+esac
+echo "shell do login: $agora"
+case "${SHELL:-}" in
+  */bash) ;;
+  *) echo "atencao: esta sessao comecou com ${SHELL:-outro shell}; os terminais so abrem o bash depois de sair e entrar na sessao"
+     echo "atencao: fechar as janelas do terminal nao basta para trocar o shell" ;;
+esac
+'''
+
+[[passo]]
+tipo = "script"
+se = "shell_padrao == nao"
+dizer = "voltando o shell do login ao de antes"
+corpo = '''
+usuario=${CTX_USUARIO:-$(id -un)}
+# o shell de antes do projeto, guardado pela receita 00; sem ele, fica como esta
+guardado=""
+[ -f "$CTX_ESTADO_DIR/shell-original" ] && guardado=$(head -n1 "$CTX_ESTADO_DIR/shell-original")
+# o arquivo fica numa pasta do usuario e vai para um chsh como root: so um
+# shell da lista do sistema, do root; outro qualquer vira /bin/bash
+if [ -n "$guardado" ]; then
+  case "$guardado" in
+    /*) grep -qxF -- "$guardado" /etc/shells && [ -x "$guardado" ] \
+          && [ "$(stat -L -c %u "$guardado")" = 0 ] || guardado="" ;;
+    *) guardado="" ;;
+  esac
+  if [ -z "$guardado" ]; then
+    echo "atencao: shell guardado invalido; volta para /bin/bash"
+    guardado=/bin/bash
+  fi
+fi
+atual=$(getent passwd "$usuario" | cut -d: -f7)
+if [ -z "$guardado" ] || [ "$guardado" = "$atual" ] || [ ! -x "$guardado" ]; then
+  echo "o shell do login fica $atual"
+  exit 0
+fi
+sudo -n chsh -s "$guardado" "$usuario" || true
+agora=$(getent passwd "$usuario" | cut -d: -f7)
+if [ "$agora" != "$guardado" ]; then
+  echo "o shell do login continua $agora; rode: chsh -s $guardado" >&2
+  exit 1
+fi
+echo "shell do login: $agora"
+if [ "${SHELL:-}" != "$agora" ]; then
+  echo "atencao: esta sessao comecou com ${SHELL:-outro shell}; os terminais so abrem o $(basename "$agora") depois de sair e entrar na sessao"
+  echo "atencao: fechar as janelas do terminal nao basta para trocar o shell"
+fi
+'''

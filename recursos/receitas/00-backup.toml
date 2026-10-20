@@ -1,0 +1,28 @@
+[modulo]
+id = "00"
+nome = "backup"
+titulo = "Copia de seguranca do que existe hoje"
+afetada_por = []
+
+# O motor ja guarda cada arquivo antes de escrever nele, mas so na hora. Esta
+# etapa guarda de uma vez o que as proximas vao tocar, antes de tudo.
+[[passo]]
+tipo = "backup"
+dizer = "guardando a configuracao atual"
+caminhos = [
+  "~/.bashrc",
+  "~/.config/bash",
+  "~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-terminal.xml",
+]
+
+# a troca de shell nao e arquivo: guarda qual era, para o desfazer saber
+# para onde voltar. So a primeira vez, senao guardaria o bash
+[[passo]]
+tipo = "script"
+dizer = "guardando qual e o shell do login"
+corpo = '''
+arquivo="$CTX_ESTADO_DIR/shell-original"
+mkdir -p "$CTX_ESTADO_DIR"
+[ -f "$arquivo" ] || getent passwd "${CTX_USUARIO:-$(id -un)}" | cut -d: -f7 > "$arquivo"
+echo "shell de antes: $(cat "$arquivo")"
+'''

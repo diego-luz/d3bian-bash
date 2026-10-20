@@ -1,0 +1,17 @@
+// minimalista, do d3bian-init-terminal: sem logo e em poucas linhas, para nao empurrar o prompt.
+// Os icones sao da Nerd Font, escritos como \u para o arquivo continuar legivel.
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": null,
+  "display": {
+    "separator": ""
+  },
+  "modules": [
+    "break",
+    { "type": "os", "key": "\uf306 ", "keyColor": "34", "format": "{name} {version-id}" },
+    { "type": "kernel", "key": "   \uf17c ", "keyColor": "35", "format": "{release}" },
+    { "type": "shell", "key": "   \uf489 ", "keyColor": "32", "format": "{pretty-name}" },
+    { "type": "memory", "key": "   \uf2db ", "keyColor": "33", "format": "{used} / {total}" },
+    "break"
+  ]
+}
