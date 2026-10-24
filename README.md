@@ -26,6 +26,31 @@ python3 -m d3bian_init_bash            # pede a senha uma vez e abre o painel
   <img src="docs/imagens/resultado-instalado.jpg" alt="O terminal logo depois de instalar, com as opções padrão" width="820">
 </div>
 
+<details>
+<summary><b>In English</b></summary>
+
+A local control panel, opened in your browser, that makes the terminal on Debian
+(and Ubuntu/Mint) look great **with plain bash**, no zsh or fish: autosuggestions
+and syntax highlighting (ble.sh), fzf on Ctrl+R/Ctrl+T/Alt+C, an Oh My Posh prompt,
+a Nerd Font, a color scheme for xfce4-terminal and GNOME Terminal, and fastfetch.
+Pick it by looking at a gallery of screenshots, apply, and undo whenever you want.
+
+- **Packages from your distribution's repository**; Oh My Posh, ble.sh and the
+  Nerd Fonts come from their official releases at a fixed version, with the
+  SHA-256 checked before anything runs.
+- **Safe to try**: every change is backed up and journaled; *Restore* puts your
+  terminal back the way it was.
+- **Python standard library only**: no pip, nothing to build.
+
+```sh
+git clone https://github.com/diego-luz/d3bian-bash.git d3bian_init_bash
+python3 -m d3bian_init_bash        # asks for your password once, opens the panel
+```
+
+The interface and the documentation are in Brazilian Portuguese.
+
+</details>
+
 ---
 
 ## O que ele faz
